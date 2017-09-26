@@ -1,0 +1,168 @@
+---
+title: "HW3_asp2197"
+author: "Abhay Pawar (UNI: asp2197)"
+date: "12 March 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(vcd)
+library(ggplot2)
+library(lawstat)
+library(MASS)
+library(gridExtra)
+library(grid) 
+library(lattice)
+library(gridGraphics)
+library(GGally)
+library(dplyr)
+library(tidyr)
+library(extracat)
+
+```
+
+## Question 1 Mosaic plots
+
+
+```{r Question 1 Single Factor patterns}
+#Single factor patterns
+Punishment=Punishment
+mosaic(Freq ~  memory + attitude, data = Punishment,direction = c("h","v"), shade=TRUE, legend=FALSE)
+mosaic(Freq ~  education + attitude, data = Punishment,direction = c("h","v"), shade=TRUE, legend=FALSE)
+mosaic(Freq ~  age + attitude, data = Punishment,direction = c("h","v"), shade=TRUE, legend=FALSE)
+
+```
+
+I first looked at the relation between attitude and other three variables individually. Above three mosaic plots clearly show that relationship.
+
+1. With respect to having memory, people who have memory of corporal punishment are more likely to be okay (attitude=moderate) with corporal punishment as compared to people without any memory
+
+2. With respect to education, we can clearly see that higher the education lesser is the approval for corporal punishment
+
+3. With respect to age, I don't see any significant difference in approval levels across different age groups. People over 40 are slightly less likely to approve as compared to other age groups. But, the difference is negligible.
+
+```{r Question 1 Multi factor plots, echo=FALSE}
+mosaic(Freq ~ memory + education + attitude, data = Punishment, direction = c("h","v","v"), shade=TRUE, legend=FALSE)
+mosaic(Freq ~ memory + age + attitude, data = Punishment, direction = c("h","v","v"), shade=TRUE, legend=FALSE)
+mosaic(Freq ~ education + age + attitude, data = Punishment, direction = c("h","v","v"), shade=TRUE, legend=FALSE)
+mosaic(Freq ~ education + age + memory + attitude, data = Punishment, direction = c("h","v","h","v"), shade=TRUE, legend=FALSE)
+```
+
+Multi factor plots:
+
+1. memory + education + attitude : No extra information can be seen from this plot. We see the same trend that was seen in single variable mosaic plots. Higher education leads to more no in attitude and memory=no also leads to more no in attitude.
+
+2. memory + age + attitude: The proportion of >40 age group is higher for attitude=moderate as compared to attitude=no in memory=yes. But, the difference is not large enough and we can say that there is no interaction as such within these two variables.
+
+3. education + age + attitude: Again there is no interaction between education and age. The insights from this plot are similar to the insights that we got from the single variables plots.
+
+4. education + age + memory + attitude: We know that memory=no leads to higher people not approving corporal punishment. But, when we look at education=high and age= 15-24 or 25-39, we see the opposite is true. For people in this group, memory=no leads to lower approval of corporal punishment as compared to memory=yes. Also, we expect to see lower approvals wrt increasing education level. But, when we look at age=40- and memory=yes, we see high approvals from high education people as compared to other education levels. Hence, we can say that there is some interaction between these three variables. Both these interactions can't said to be significant because the datapoints in these data slices is very low.
+
+##Question 2
+###Heat Map 1: Revenue trend in each country wrt year.
+```{r}
+sales<-read.csv("WA_Sales_Products_2012-14.csv")
+
+agg<-aggregate(sales$Revenue,by=list(sales$Retailer.country,sales$Year),FUN=sum,na.rm=TRUE)
+
+colnames(agg)<-c("Country","Year","Revenue")
+agg_split<-spread(agg,key=Country,Revenue)
+
+agg_split_scaled<-cbind(agg_split[1],data.frame(scale(agg_split[2:22],center=FALSE,scale = apply(agg_split[2:22], 2, sd, na.rm = TRUE))))
+
+agg_final<-gather(agg_split_scaled,key=Year,value = Revenue)
+colnames(agg_final)<-c("Year","Country","Revenue")
+ggplot(agg_final)+geom_tile(aes(x=Year,y=Country,fill=Revenue))
+
+```
+
+Data Scaling: Since I wanted to look at trend in revenue wrt year for each country, I scaled the revenue figures for each country. 
+
+Ordering of variables: I put Year on X-axis, so that it is easier to compare the revenues across different years for a country.
+
+Insight: We can clearly see that the revenue was the highest in 2013 for all the countries.
+
+###Heat Map 2: Revenue trend for each Retailer.type wrt Quarter
+
+```{r }
+# Retailer.type, Quarter
+
+agg<-aggregate(sales$Revenue,by=list(sales$Retailer.type,sales$Quarter),FUN=sum,na.rm=TRUE)
+
+colnames(agg)<-c("Retailer.type","Quarter","Revenue")
+agg_split<-spread(agg,key=Retailer.type,Revenue)
+
+agg_split_scaled<-cbind(agg_split[1],data.frame(scale(agg_split[2:9],center=FALSE,scale = apply(agg_split[2:9], 2, sd, na.rm = TRUE))))
+
+agg_final<-gather(agg_split_scaled,key=Quarter,value = Revenue)
+colnames(agg_final)<-c("Quarter","Retailer.type","Revenue")
+agg_final$Quarter <- factor(agg_final$Quarter, levels=unique(agg_final$Quarter))
+agg_final$Quarter <- factor(agg_final$Quarter, levels=c("Q1 2012","Q2 2012","Q3 2012","Q4 2012","Q1 2013","Q2 2013","Q3 2013","Q4 2013","Q1 2014","Q2 2014","Q3 2014"))
+
+ggplot(agg_final)+geom_tile(aes(x=Quarter,y=Retailer.type,fill=Revenue))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+Data Scaling: Since I wanted to look at trend in revenue wrt year for each quarter, I scaled the revenue figures for each retailer type 
+
+Ordering of variables: I put quarter on X-axis, so that it is easier to compare the revenues across different quarters for a retailer type.
+
+Insight: We can clearly see that the revenues have dropped for almost all retailer types in Q3 of 2014. Revenues are the highest in Q1 and Q2 of 2014 for all retailer types except Warehouse, Equipment rental and Direct Marketing.
+
+###Heat Map 3: Average price of products in each Product type across different countries
+
+```{r}
+
+sales$avg_price=sales$Revenue/sales$Quantity
+agg<-aggregate(sales$avg_price,by=list(sales$Retailer.country,sales$Product.type),FUN=mean,na.rm=TRUE)
+
+colnames(agg)<-c("Retailer.country","Product.type","avg_price")
+agg_split<-spread(agg,key=Product.type,avg_price)
+
+agg_split_scaled<-cbind(agg_split[1],data.frame(scale(agg_split[2:22],center=TRUE,scale = apply(agg_split[2:22], 2, sd, na.rm = TRUE))))
+
+agg_final<-gather(agg_split_scaled,key=Retailer.country,value = avg_price)
+colnames(agg_final)<-c("Retailer.country","Retailer.type","avg_price")
+
+ggplot(agg_final)+geom_tile(aes(x=Retailer.country,y=Retailer.type,fill=avg_price))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+I wanted to compare prices of various product types across different countries.
+I first found the average price of each product by dividing revenue by quantity. Then I took the average of average price across a product type to get its average price across different countries. 
+
+Data Scaling: The scaling was done for a specific product type because we want to compare these across different countries
+
+Ordering of variables: I put country on X-axis, so that it is easier to compare the average price across different countries for a product type.
+
+Insight: We can see that some countries stand out in terms of prices for some product categories. Eg. Denmark has the lowest prices for Irons, knives, Putters, tools, woods, etc. Whereas Sweden has lowest prices for Binoculars, lanterns, sleeping bags and watches.
+
+##Question 3
+```{r}
+Scorecards<-read.csv("Most-Recent-Cohorts-Scorecard-Elements.csv",na.strings = 'NULL')
+visna(Scorecards)
+
+```
+
+I broadly looked at data and used the visna on complete dataset to get an understanding of which columns have a lot of missing values. The plot is not completely clear, but gives an idea about the missing data. We can see that there are a lot of missing values for SAT, ACT and NPT type of columns.I analysed these variable groups separately.
+
+```{r}
+visna(Scorecards[23:31])
+
+```
+
+On looking at the SAT scores, we see that all these columns have about same proportion of missing data. We see that there are a lot of rows where no information is available about the SAT scores. Rows where all the data about SAT is available comes after rows with no SAT data in terms of numbers. A significant number of rows have SATWR25, SATWR75 and SATWRMID missing implying that SATWR hasn't been recorded for many rows. 
+
+```{r}
+visna(Scorecards[32:43])
+```
+
+From this plot, we can see that again rows with no information about ACT scores are high in number. Then we see rows with no information about ACTWR are also high in number. After this comes rows with all the ACT data in terms of numbers. Then comes the rows with no ACTEN, ACTMT and ACTWR scores.
+
+```{r}
+visna(Scorecards[97:108])
+
+```
+
+We can see that _PUB (public universities) type of variables have the highest number of missing values together. It is followed by the _PRIV (private universities) type of variables. This is followed by rows where all the columns are available.
